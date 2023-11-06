@@ -8,6 +8,8 @@ import yaml
 def get_args():
     parser = argparse.ArgumentParser(description="Parse YAML file with argparse")
     parser.add_argument("-f", "--file", required=True, help="Path to the YAML file")
+    parser.add_argument("-t", "--test_mode", action="store_true", help="Enable test mode")
+
     args = parser.parse_args()
     return args
 
@@ -27,9 +29,17 @@ if __name__ == "__main__":
 
     datamod = SFGD_tagging(data_dir= data_path, batch_size= yaml_data["batch_size"])
 
-    model = NodeClassificationEngine("transformer_encoder", model_kwargs= yaml_data["model_config"], lr = yaml_data["learning_rate"], epochs=2)
-
-    trainer = pl.Trainer(accelerator="cuda", devices=find_usable_cuda_devices(yaml_data["num_devices"]), precision="bf16-mixed", max_epochs=yaml_data["max_epochs"])
+    model = NodeClassificationEngine("transformer_encoder", model_kwargs= yaml_data["model_config"], lr = yaml_data["learning_rate"])
+    
+    if config.test_mode :
+        print("RUNNING IN TEST MODE")
+        trainer = pl.Trainer(fast_dev_run= 10, accelerator="cuda", devices=find_usable_cuda_devices(yaml_data["num_devices"]), precision="16-mixed", max_epochs=yaml_data["max_epochs"])
+    
+    else :
+        trainer = pl.Trainer(accelerator="cuda", devices=find_usable_cuda_devices(yaml_data["num_devices"]), precision="16-mixed", max_epochs=yaml_data["max_epochs"])
+    
+    
     trainer.fit(model=model, datamodule=datamod)
+    trainer.test(model=model, datamodule=datamod)
 
 

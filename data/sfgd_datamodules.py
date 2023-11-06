@@ -54,9 +54,7 @@ class NodeCL_h5dataset(Dataset):
             h_start, h_stop = self.h5_file["event_hits_index"][x], self.h5_file["event_hits_index"][x+1]
         n_hits = h_stop - h_start
         charge = charge_transform(self.h5_file["charge"][h_start:h_stop][:,None])
-        print(charge.shape)
         coords = self.h5_file["coords"][h_start:h_stop] -self.h5_file["verPos"][x]
-        print(coords.shape)
         coords = scale_coords(coords)
         vals = self.enc.transform(self.h5_file["labels"][h_start:h_stop])
         feats = np.concatenate([coords,charge], axis=1)
@@ -82,11 +80,11 @@ class SFGD_tagging(pl.LightningDataModule):
     
     def setup(self, stage):
         if self.use_h5:
-            dataset = NodeCL_h5dataset(self.data_dir)
+            self.dataset = NodeCL_h5dataset(self.data_dir)
         else :
-            dataset = NodeCL_dataset(self.data_dir)
-            
-        self.train_dataset, self.val_dataset, self.test_dataset = random_split(dataset, lengths=[0.65,0.15,0.2])
+            self.dataset = NodeCL_dataset(self.data_dir)
+
+        self.train_dataset, self.val_dataset, self.test_dataset = random_split(self.dataset, lengths=[0.65,0.15,0.2])
     
     def train_dataloader(self):
         rand_sampler = RandomSampler(self.train_dataset)

@@ -24,7 +24,7 @@ from sklearn.metrics import f1_score, auc, confusion_matrix, ConfusionMatrixDisp
 import matplotlib.ticker as ticker
 
 from models.transformer_encoder import TransformerSeg
-from data.data_utils import inv_charge_transform, inv_coords_scale
+from data.data_utils import inv_charge_transform, inv_scale_coords
 
 class NodeClassificationEngine(pl.LightningModule):
     def __init__(self, model_name, model_kwargs, lr):
@@ -57,15 +57,16 @@ class NodeClassificationEngine(pl.LightningModule):
     
     def test_step(self, batch, batch_idx):
         loss, pred, target = self.step(batch)
+        
         for i in range(len(batch)):
-            true_labels = self.dataset.enc.inverse_transform(batch["values"][i,batch["mask"][i].bool()])
-            pred_labels = self.dataset.enc.inverse_transform(pred[i,batch["mask"][i].bool()])
+            true_labels = self.trainer.datamodule.dataset.enc.inverse_transform(batch["values"][i,batch["mask"][i].bool()].cpu().detach())
+            pred_labels = self.trainer.datamodule.dataset.enc.inverse_transform(pred[i,batch["mask"][i].bool()].cpu().detach())
             conf_mat = torch.tensor(confusion_matrix(true_labels, pred_labels, normalize="true"))
 
             self.test_conf_mat = torch.cat((self.test_conf_mat, conf_mat))
             self.test_nhits = torch.cat((self.test_nhits, torch.tensor([len(batch["values"][i,batch["mask"][i].bool()])])))
             
-        charge = inv_charge_transform(batch["coords"][:,:,3])
+        charge = inv_charge_transform(batch["coords"][:,:,3].cpu().detach())
         self.test_charge = torch.cat((self.test_charge,torch.sum(charge, axis = 1)))
 
         self.log("test_loss", loss, on_step=True, on_epoch=True, sync_dist=True)

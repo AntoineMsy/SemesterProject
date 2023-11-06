@@ -13,6 +13,7 @@ def scale_coords(x, max_mean = 540):
 
 def inv_scale_coords(y, max_mean = 540):
     return y*max_mean
+
 class LenMatchBatchSampler(torch.utils.data.BatchSampler):
     def __init__(self, data_source, sampler, batch_size, drop_last):
         super().__init__(sampler, batch_size, drop_last)
