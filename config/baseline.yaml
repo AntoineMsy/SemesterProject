@@ -1,0 +1,15 @@
+data_dir : /home/amisery/out.h5
+
+num_devices : 1
+
+batch_size : 32
+max_epochs : 32
+learning_rate : 1e-3
+
+model_config:
+  d_model : 64
+  d_ff: 32 
+  num_heads : 4 
+  num_layers" : 5 
+  n_features" : 4 
+  out_features" : 3

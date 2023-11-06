@@ -27,14 +27,13 @@ from models.transformer_encoder import TransformerSeg
 from data.data_utils import inv_charge_transform, inv_coords_scale
 
 class NodeClassificationEngine(pl.LightningModule):
-    def __init__(self, model_name, model_kwargs, lr, epochs):
+    def __init__(self, model_name, model_kwargs, lr):
         super(NodeClassificationEngine,self).__init__()
         self.save_hyperparameters()
         self.example_input_array = (torch.Tensor(32, 5, 4), torch.Tensor(32, 5))
         self.model_kwargs = model_kwargs
         self.model_name = model_name
         self.lr = lr
-        self.epochs = epochs
 
         valid_models = {"transformer_encoder" : TransformerSeg}
         
@@ -60,14 +59,14 @@ class NodeClassificationEngine(pl.LightningModule):
         loss, pred, target = self.step(batch)
         for i in range(len(batch)):
             true_labels = self.dataset.enc.inverse_transform(batch["values"][i,batch["mask"][i].bool()])
-            pred_labels = self.dataset.enc.inverse_transform(batch["values"][i,batch["mask"][i].bool()])
+            pred_labels = self.dataset.enc.inverse_transform(pred[i,batch["mask"][i].bool()])
+            conf_mat = torch.tensor(confusion_matrix(true_labels, pred_labels, normalize="true"))
 
-            self.test_nhits.append(len(batch["values"][i,batch["mask"][i].bool()]))
-            conf_mat = confusion_matrix(true_labels, pred_labels, normalize="true")
-
+            self.test_conf_mat = torch.cat((self.test_conf_mat, conf_mat))
+            self.test_nhits = torch.cat((self.test_nhits, torch.tensor([len(batch["values"][i,batch["mask"][i].bool()])])))
+            
         charge = inv_charge_transform(batch["coords"][:,:,3])
-        print(charge.size())
-        torch.sum(charge, axis = 1)
+        self.test_charge = torch.cat((self.test_charge,torch.sum(charge, axis = 1)))
 
         self.log("test_loss", loss, on_step=True, on_epoch=True, sync_dist=True)
         return loss, pred, target
@@ -81,7 +80,8 @@ class NodeClassificationEngine(pl.LightningModule):
         return loss, pred, target
         
     def on_test_epoch_end(self):
-        #Compute average loss, confusion matrix between classes and per event 
+        #Compute average loss, confusion matrix between classes and per event
+        print(self.test_charge.size(), self.test_conf_mat.size(), self.test_nhits.size()) 
         print('test_epoch ended')
 
     def on_test_epoch_start(self):

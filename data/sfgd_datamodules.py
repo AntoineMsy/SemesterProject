@@ -15,7 +15,6 @@ class NodeCL_dataset(Dataset):
         self.len = len(os.listdir(self.data_dir))
         # self.transforms = transforms.Compose([transforms.ToTensor()])
         self.enc = OneHotEncoder(sparse_output=False)
-
         fit_array = np.array([[1],[2],[3]])
         self.enc.fit(fit_array)
 
@@ -71,18 +70,22 @@ class NodeCL_h5dataset(Dataset):
         return self.len
     
 class SFGD_tagging(pl.LightningDataModule):
-    def __init__(self, data_dir, batch_size, num_workers = 15):
+    def __init__(self, data_dir, batch_size, use_h5 = True, num_workers = 15):
         super(SFGD_tagging, self).__init__()
         self.data_dir = data_dir
         self.batch_size = batch_size
         self.num_workers = num_workers
+        self.use_h5 = use_h5
         
-
     def prepare_data(self):
         ...
     
     def setup(self, stage):
-        dataset = NodeCL_dataset(self.data_dir)
+        if self.use_h5:
+            dataset = NodeCL_h5dataset(self.data_dir)
+        else :
+            dataset = NodeCL_dataset(self.data_dir)
+            
         self.train_dataset, self.val_dataset, self.test_dataset = random_split(dataset, lengths=[0.65,0.15,0.2])
     
     def train_dataloader(self):
