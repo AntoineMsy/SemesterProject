@@ -1,2 +1,6 @@
 lightning_logs/
 MNIST/
+*.pyc
+data/__pycache__/
+models/__pycache__/
+notebooks/__pycache__/
