@@ -65,9 +65,9 @@ class EncoderLayer(nn.Module):
         y = x_att + self.dropout(self.ffn(self.norm(x_att)))
         return y
 
-class Model(nn.Module):
+class TransformerSeg(nn.Module):
     def __init__(self, d_model, d_ff, num_heads, num_layers, in_features, out_features):
-        super(Model,self).__init__()
+        super(TransformerSeg,self).__init__()
         enc_layer = EncoderLayer(d_model,d_ff,num_heads, dropout = 0.01)
         self.encoder = TransformerEncoder(enc_layer,num_layers)
         self.lin_emb = nn.Linear(in_features,d_model)
@@ -75,9 +75,6 @@ class Model(nn.Module):
 
     def forward(self,x, mask):
         x_model = torch.stack([self.lin_emb(x[:,i,:]) for i in range(x.shape[1])], dim=1)
-
-        print(x_model.shape)
-
         x_model_out = self.encoder(x_model, mask)
         y_pred = torch.stack([self.out_lin(x_model_out[:,i,:]) for i in range(x_model_out.shape[1])], dim=1)
         return y_pred

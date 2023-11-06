@@ -1,5 +1,18 @@
 import torch
+import numpy as np
 
+
+def charge_transform(x, mean = 185, log_std = 4):
+    return np.log(x/mean)/log_std
+
+def inv_charge_transform(y, mean = 185, log_std = 4):
+    return mean*np.exp(log_std*y)
+
+def scale_coords(x, max_mean = 540):
+    return x/max_mean
+
+def inv_scale_coords(y, max_mean = 540):
+    return y*max_mean
 class LenMatchBatchSampler(torch.utils.data.BatchSampler):
     def __init__(self, data_source, sampler, batch_size, drop_last):
         super().__init__(sampler, batch_size, drop_last)
