@@ -1,6 +1,7 @@
 import torch
 import os
 import numpy as np
+import h5py
 from torch.utils.data import Dataset, RandomSampler, random_split, DataLoader
 import lightning.pytorch as pl
 from data.data_utils import LenMatchBatchSampler, charge_transform, scale_coords
@@ -25,6 +26,40 @@ class NodeCL_dataset(Dataset):
         coords = npz_file["c"].astype("float32")-npz_file["verPos"].astype("float32")
         coords = scale_coords(coords)
         vals = self.enc.transform(npz_file["y"].astype("float32"))
+        feats = np.concatenate([coords,charge], axis=1)
+        p2d = (0,0,0,64 - n_hits%64)
+        mask = torch.zeros(n_hits+ 64 - n_hits%64)
+        mask[:n_hits] = 1
+        t_coords, t_vals = torch.nn.functional.pad(torch.tensor(feats), p2d, value = 0), torch.nn.functional.pad(torch.tensor(vals), p2d, value = 0)
+        return {"coords": t_coords, "values": t_vals, "mask": mask }
+    
+    def __len__(self):
+        return self.len
+
+class NodeCL_h5dataset(Dataset):
+    def __init__(self, data_dir):
+        super(NodeCL_h5dataset, self).__init__()
+        self.data_dir = data_dir
+      
+        self.h5_file = h5py.File(self.data_dir)
+        self.len = len(self.h5_file["event_hits_index"])
+        # self.transforms = transforms.Compose([transforms.ToTensor()])
+        self.enc = OneHotEncoder(sparse_output=False)
+        fit_array = np.array([[1],[2],[3]])
+        self.enc.fit(fit_array)
+
+    def __getitem__(self,x):
+        if x == self.len:
+            h_start, h_stop = self.h5_file["event_hits_index"][x], len(self.h5_file["coords"])
+        else :
+            h_start, h_stop = self.h5_file["event_hits_index"][x], self.h5_file["event_hits_index"][x+1]
+        n_hits = h_stop - h_start
+        charge = charge_transform(self.h5_file["charge"][h_start:h_stop][:,None])
+        print(charge.shape)
+        coords = self.h5_file["coords"][h_start:h_stop] -self.h5_file["verPos"][x]
+        print(coords.shape)
+        coords = scale_coords(coords)
+        vals = self.enc.transform(self.h5_file["labels"][h_start:h_stop])
         feats = np.concatenate([coords,charge], axis=1)
         p2d = (0,0,0,64 - n_hits%64)
         mask = torch.zeros(n_hits+ 64 - n_hits%64)
