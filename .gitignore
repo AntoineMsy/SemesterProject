@@ -1,6 +1,7 @@
 lightning_logs/
 MNIST/
 .out
+.h5
 *.pyc
 __pycache__/
 notebooks/debug_ppl.ipynb

@@ -14,6 +14,11 @@ def scale_coords(x, max_mean = 540):
 def inv_scale_coords(y, max_mean = 540):
     return y*max_mean
 
+def pad_elem(el, mask_l, max_l):
+    mask_seq = torch.zeros(max_l)
+    mask_seq[:mask_l] = 1
+    return [torch.nn.functional.pad(el, (0,0,0, max_l - mask_l), value = 0)[None,:], mask_seq]
+
 def my_collate(batch_list):
     # batch contains a list of tuples of structure (sequence, target)
     # coords, target, mask = batch["coords"], batch["values"], batch["mask"]
@@ -22,14 +27,14 @@ def my_collate(batch_list):
     mask_lengths = [len(item["coords"]) for item in batch_list]
     max_l = max(mask_lengths)
     mask = torch.zeros(len(batch_list), max_l)
+    # print(torch.vmap(pad_elem)(coords, mask_lengths, mask))
+    # print(torch.tensor(np.array(map(pad_elem, (coords, mask_lengths, mask)))))
+    feats_out = torch.stack([torch.nn.functional.pad(coords[i], (0,0,0, max_l - mask_lengths[i]), value = 0) for i in range(len(coords))])
+    vals_out = torch.stack([torch.nn.functional.pad(target[i], (0,0,0, max_l - mask_lengths[i]), value = 0) for i in range(len(coords))])
 
-    feats_out = torch.empty(0)
-    vals_out = torch.empty(0)
     for i in range(len(batch_list)):
-        p2d = (0,0,0, max_l - mask_lengths[i])
         mask[i,:mask_lengths[i]] = 1
-        feats_out, vals_out = torch.concatenate((feats_out,torch.nn.functional.pad(coords[i], p2d, value = 0)[None,:])), torch.concatenate((vals_out,torch.nn.functional.pad(target[i], p2d, value = 0)[None,:]))
-    
+        
     return {"coords": feats_out, "values": vals_out, "mask": mask }
     # coords = pack_sequence(coords, enforce_sorted=False)
     
@@ -41,7 +46,7 @@ class LenMatchBatchSampler(torch.utils.data.BatchSampler):
         super().__init__(sampler, batch_size, drop_last)
         self.dataset = data_source
     def __iter__(self):
-        buckets = [[]] * 5000
+        buckets = [[]] * 150
         yielded = 0
         
         for idx in self.sampler:
@@ -66,14 +71,13 @@ class LenMatchBatchSampler(torch.utils.data.BatchSampler):
                 buckets[L] = []
 
         batch = []
+        # print(buckets)
         leftover = [idx for bucket in buckets for idx in bucket]
-        print("loop finished")
-        print(leftover)
+        print("loop finished, entering leftover indices")
+        # self.batch_size = self.batch_size//16
         for idx in leftover:
             batch.append(idx)
             if len(batch) == self.batch_size:
-                print("end yield")
-                print(batch)
                 yielded += 1
                 yield batch
                 batch = []

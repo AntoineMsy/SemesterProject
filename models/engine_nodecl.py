@@ -48,7 +48,7 @@ class NodeClassificationEngine(pl.LightningModule):
     
     def training_step(self, batch, batch_idx):
         loss, pred, target = self.step(batch)
-        self.log("train_loss", loss, on_step=True, on_epoch=True, sync_dist=True)
+        self.log("train_loss", loss, on_step=True, on_epoch=True, rank_zero_only=True)
         return loss
     
     def test_step(self, batch, batch_idx):
@@ -65,7 +65,7 @@ class NodeClassificationEngine(pl.LightningModule):
         charge = inv_charge_transform(batch["coords"][:,:,3].cpu().detach())
         self.test_charge = torch.cat((self.test_charge,torch.sum(charge, axis = 1)))
 
-        self.log("test_loss", loss, on_step=True, on_epoch=True, sync_dist=True)
+        self.log("test_loss", loss, on_step=True,  rank_zero_only=True)
         return loss, pred, target
     
     def validation_step(self, batch, batch_idx):
@@ -75,7 +75,7 @@ class NodeClassificationEngine(pl.LightningModule):
         loss, pred, target = self.step(batch)
         
         self.val_loss_list = torch.cat((self.val_loss_list, loss.cpu().detach()[None]))
-        self.log("validation_loss", loss, on_step=True, on_epoch=True, sync_dist=True)
+        self.log("validation_loss", loss, on_step=True, rank_zero_only=True )
         return loss, pred, target
         
     def on_test_epoch_end(self):
@@ -92,7 +92,7 @@ class NodeClassificationEngine(pl.LightningModule):
         self.val_loss_list = torch.empty(0)
 
     def on_validation_epoch_end(self):
-        self.log("mean_val_loss", torch.mean(self.val_loss_list), on_epoch=True, sync_dist=True)
+        self.log("mean_val_loss", torch.mean(self.val_loss_list), rank_zero_only=True)
         print('val epoch ended')
         self.val_loss_list = torch.empty(0)
 
