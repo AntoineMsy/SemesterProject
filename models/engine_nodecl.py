@@ -9,17 +9,13 @@ import torch.nn as nn
 from torch.nn import functional as F
 from torch.optim.lr_scheduler import StepLR,CyclicLR
 from torchvision.transforms.transforms import RandomRotation
-from lightning.pytorch.callbacks import Callback
-from lightning.pytorch.callbacks.early_stopping import EarlyStopping
-from lightning.pytorch.callbacks import DeviceStatsMonitor
-from lightning.pytorch.callbacks import ModelCheckpoint
+
 # import seaborn as sns
 import pandas as pd
 import matplotlib
 # matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 import numpy as np
-from lightning.pytorch.loggers.neptune import NeptuneLogger
 from sklearn.metrics import f1_score, auc, confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.ticker as ticker
 
@@ -57,11 +53,11 @@ class NodeClassificationEngine(pl.LightningModule):
     
     def test_step(self, batch, batch_idx):
         loss, pred, target = self.step(batch)
-        
-        for i in range(len(batch)):
+        for i in range(len(batch["coords"])):
+            class_pred  = torch.argmax(pred, 2) + 1
             true_labels = self.trainer.datamodule.dataset.enc.inverse_transform(batch["values"][i,batch["mask"][i].bool()].cpu().detach())
-            pred_labels = self.trainer.datamodule.dataset.enc.inverse_transform(pred[i,batch["mask"][i].bool()].cpu().detach())
-            conf_mat = torch.tensor(confusion_matrix(true_labels, pred_labels, normalize="true"))
+            pred_labels = class_pred[i,batch["mask"][i].bool()].cpu().detach()
+            conf_mat = torch.tensor(confusion_matrix(true_labels, pred_labels, labels = [1,2,3], normalize="true"))[None,:,:]
 
             self.test_conf_mat = torch.cat((self.test_conf_mat, conf_mat))
             self.test_nhits = torch.cat((self.test_nhits, torch.tensor([len(batch["values"][i,batch["mask"][i].bool()])])))
@@ -77,6 +73,8 @@ class NodeClassificationEngine(pl.LightningModule):
         # When logging only on rank 0, don't forget to add
         # `rank_zero_only=True` to avoid deadlocks on synchronization.
         loss, pred, target = self.step(batch)
+        
+        self.val_loss_list = torch.cat((self.val_loss_list, loss.cpu().detach()[None]))
         self.log("validation_loss", loss, on_step=True, on_epoch=True, sync_dist=True)
         return loss, pred, target
         
@@ -89,20 +87,23 @@ class NodeClassificationEngine(pl.LightningModule):
         self.test_charge = torch.empty(0)
         self.test_nhits = torch.empty(0)
         self.test_conf_mat = torch.empty(0)
+    
+    def on_validation_epoch_start(self):
+        self.val_loss_list = torch.empty(0)
 
     def on_validation_epoch_end(self):
+        self.log("mean_val_loss", torch.mean(self.val_loss_list), on_epoch=True, sync_dist=True)
         print('val epoch ended')
+        self.val_loss_list = torch.empty(0)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr = self.lr)
         return [optimizer]
 
-# # Find two GPUs on the system that are not already occupied
-# trainer = Trainer(accelerator="cuda", devices=find_usable_cuda_devices(2))
+
 # trainer = Trainer(log_every_n_steps=k)
 # Trainer(precision="16-mixed")
-# # Accumulate gradients for 7 batches
-# trainer = Trainer(accumulate_grad_batches=7)
+
 # # Enable Stochastic Weight Averaging using the callback
 # trainer = Trainer(callbacks=[StochasticWeightAveraging(swa_lrs=1e-2)])
 
@@ -114,17 +115,3 @@ class NodeClassificationEngine(pl.LightningModule):
 # # sets hparams.lr or hparams.learning_rate to that learning rate
 # tuner.lr_find(model)
 
-# class MNISTDataModule(pl.LightningDataModule):
-#     def __init__(self, data_dir: str):
-#         self.mnist = MNIST(data_dir, download=True, transform=T.ToTensor())
-
-#     def train_loader(self):
-#         return DataLoader(self.mnist, batch_size=128)
-
-
-# model = Model(...)
-# datamodule = MNISTDataModule("data/MNIST")
-
-# trainer = Trainer(accelerator="gpu", devices=2, strategy="ddp_spawn")
-# trainer.fit(model, datamodule)
-# Trainer(fast_dev_run=True)

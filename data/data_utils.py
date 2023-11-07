@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-
+from torch.nn.utils.rnn import pack_sequence
 
 def charge_transform(x, mean = 185, log_std = 4):
     return np.log(x/mean)/log_std
@@ -13,6 +13,28 @@ def scale_coords(x, max_mean = 540):
 
 def inv_scale_coords(y, max_mean = 540):
     return y*max_mean
+
+def my_collate(batch_list):
+    # batch contains a list of tuples of structure (sequence, target)
+    # coords, target, mask = batch["coords"], batch["values"], batch["mask"]
+    coords = [item["coords"] for item in batch_list]
+    target = [item["values"] for item in batch_list]
+    mask_lengths = [len(item["coords"]) for item in batch_list]
+    max_l = max(mask_lengths)
+    mask = torch.zeros(len(batch_list), max_l)
+
+    feats_out = torch.empty(0)
+    vals_out = torch.empty(0)
+    for i in range(len(batch_list)):
+        p2d = (0,0,0, max_l - mask_lengths[i])
+        mask[i,:mask_lengths[i]] = 1
+        feats_out, vals_out = torch.concatenate((feats_out,torch.nn.functional.pad(coords[i], p2d, value = 0)[None,:])), torch.concatenate((vals_out,torch.nn.functional.pad(target[i], p2d, value = 0)[None,:]))
+    
+    return {"coords": feats_out, "values": vals_out, "mask": mask }
+    # coords = pack_sequence(coords, enforce_sorted=False)
+    
+    # target = pack_sequence(target, enforce_sorted=False)
+    # return [coords, target]
 
 class LenMatchBatchSampler(torch.utils.data.BatchSampler):
     def __init__(self, data_source, sampler, batch_size, drop_last):
@@ -32,7 +54,7 @@ class LenMatchBatchSampler(torch.utils.data.BatchSampler):
             # else:
             #     L = s["mask"].sum()
             # if torch.rand(1).item() < 0.1: L = int(1.5*L)
-            L = max(0, L // 64)
+            L = max(0, L // 32)
             if len(buckets[L]) == 0:
                 buckets[L] = []
             buckets[L].append(idx)

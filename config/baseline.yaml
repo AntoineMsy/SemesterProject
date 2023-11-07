@@ -1,10 +1,15 @@
 data_dir : /home/amisery/out.h5
 
 num_devices : 1
-
-batch_size : 32
-max_epochs : 32
 learning_rate : 1.0e-3
+batch_size : 512
+
+trainer_config:
+  max_epochs : 32
+  accumulate_grad_batches : 1
+  strategy : auto
+  deterministic : False
+  log_every_n_steps : 10
 
 model_config:
   d_model : 64

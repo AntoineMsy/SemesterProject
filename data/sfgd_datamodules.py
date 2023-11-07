@@ -4,7 +4,7 @@ import numpy as np
 import h5py
 from torch.utils.data import Dataset, RandomSampler, random_split, DataLoader
 import lightning.pytorch as pl
-from data.data_utils import LenMatchBatchSampler, charge_transform, scale_coords
+from data.data_utils import LenMatchBatchSampler, charge_transform, scale_coords, my_collate
 from torchvision import transforms
 from sklearn.preprocessing import OneHotEncoder
 
@@ -26,11 +26,13 @@ class NodeCL_dataset(Dataset):
         coords = scale_coords(coords)
         vals = self.enc.transform(npz_file["y"].astype("float32"))
         feats = np.concatenate([coords,charge], axis=1)
-        p2d = (0,0,0,64 - n_hits%64)
-        mask = torch.zeros(n_hits+ 64 - n_hits%64)
-        mask[:n_hits] = 1
-        t_coords, t_vals = torch.nn.functional.pad(torch.tensor(feats), p2d, value = 0), torch.nn.functional.pad(torch.tensor(vals), p2d, value = 0)
-        return {"coords": t_coords, "values": t_vals, "mask": mask }
+        # p2d = (0,0,0,64 - n_hits%64)
+        # mask = torch.zeros(n_hits+ 64 - n_hits%64)
+        # mask[:n_hits] = 1
+        # t_coords, t_vals = torch.nn.functional.pad(torch.tensor(feats), "p2d", value = 0), torch.nn.functional.pad(torch.tensor(vals), "p2d", value = 0)
+        t_coords, t_vals = torch.tensor(feats), torch.tensor(vals)
+       
+        return {"coords": t_coords, "values": t_vals}
     
     def __len__(self):
         return self.len
@@ -48,7 +50,7 @@ class NodeCL_h5dataset(Dataset):
         self.enc.fit(fit_array)
 
     def __getitem__(self,x):
-        if x == self.len:
+        if x+1 == self.len:
             h_start, h_stop = self.h5_file["event_hits_index"][x], len(self.h5_file["coords"])
         else :
             h_start, h_stop = self.h5_file["event_hits_index"][x], self.h5_file["event_hits_index"][x+1]
@@ -58,11 +60,15 @@ class NodeCL_h5dataset(Dataset):
         coords = scale_coords(coords)
         vals = self.enc.transform(self.h5_file["labels"][h_start:h_stop])
         feats = np.concatenate([coords,charge], axis=1)
-        p2d = (0,0,0,64 - n_hits%64)
-        mask = torch.zeros(n_hits+ 64 - n_hits%64)
-        mask[:n_hits] = 1
-        t_coords, t_vals = torch.nn.functional.pad(torch.tensor(feats), p2d, value = 0), torch.nn.functional.pad(torch.tensor(vals), p2d, value = 0)
-        return {"coords": t_coords, "values": t_vals, "mask": mask }
+        # p2d = (0,0,0,64 - n_hits%64)
+        # mask = torch.zeros(n_hits+ 64 - n_hits%64)
+        # mask[:n_hits] = 1
+        # t_coords, t_vals = torch.nn.functional.pad(torch.tensor(feats), p2d, value = 0), torch.nn.functional.pad(torch.tensor(vals), p2d, value = 0)
+        # return {"coords": t_coords, "values": t_vals, "mask": mask }
+
+        t_coords, t_vals = torch.tensor(feats), torch.tensor(vals)
+       
+        return {"coords": t_coords, "values": t_vals}
     
     def __len__(self):
         return self.len
@@ -89,17 +95,17 @@ class SFGD_tagging(pl.LightningDataModule):
     def train_dataloader(self):
         rand_sampler = RandomSampler(self.train_dataset)
         lenmatch_sampler = LenMatchBatchSampler(self.train_dataset, rand_sampler, batch_size= self.batch_size, drop_last=False)
-        return DataLoader(self.train_dataset, batch_sampler=lenmatch_sampler, num_workers=self.num_workers)
+        return DataLoader(self.train_dataset, batch_sampler=lenmatch_sampler, num_workers=self.num_workers, collate_fn=my_collate)
     
     def val_dataloader(self):
         rand_sampler = RandomSampler(self.val_dataset)
         lenmatch_sampler = LenMatchBatchSampler(self.val_dataset, rand_sampler, batch_size= self.batch_size, drop_last=False)
-        return DataLoader(self.val_dataset, batch_sampler=lenmatch_sampler, num_workers=self.num_workers)
+        return DataLoader(self.val_dataset, batch_sampler=lenmatch_sampler, num_workers=self.num_workers, collate_fn=my_collate)
     
     def test_dataloader(self):
         rand_sampler = RandomSampler(self.test_dataset)
         lenmatch_sampler = LenMatchBatchSampler(self.test_dataset, rand_sampler, batch_size= self.batch_size, drop_last=False)
-        return DataLoader(self.test_dataset, batch_sampler=lenmatch_sampler, num_workers=self.num_workers)
+        return DataLoader(self.test_dataset, batch_sampler=lenmatch_sampler, num_workers=self.num_workers, collate_fn=my_collate)
     
     def teardown(self, stage):
         ...
