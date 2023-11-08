@@ -38,16 +38,26 @@ if __name__ == "__main__":
     model = NodeClassificationEngine("transformer_encoder", model_kwargs= yaml_data["model_config"], lr = yaml_data["learning_rate"])
     if config.name:
         run_name = config.name
-        logger = TensorBoardLogger("tb_logs", name="my_model")
+        logger = TensorBoardLogger("tb_logs", name=run_name)
     else : 
         logger = TensorBoardLogger("tb_logs", name="my_model")
 
+    if "num_devices" in list(yaml_data.keys()):
+        dev = find_usable_cuda_devices(yaml_data["num_devices"])
+    else :
+        dev = yaml_data['devices_names']
+
+    callbacks = [EarlyStopping(monitor = "validation_loss", log_rank_zero_only=True)]
+
     trainer_args = {"accelerator" : "cuda", 
-                    "devices": find_usable_cuda_devices(yaml_data["num_devices"]), 
+                    "devices": dev, 
                     "precision" : "16-mixed", 
+                    "logger" : logger,
+                    "callbacks" : callbacks,
                     **yaml_data["trainer_config"]
                     }
-    callbacks = [EarlyStopping(monitor = "mean_val_loss", mode = "min")]
+    
+
     if config.test_mode :
         print("RUNNING IN DEV MODE")
         trainer = pl.Trainer(fast_dev_run= 10, **trainer_args)

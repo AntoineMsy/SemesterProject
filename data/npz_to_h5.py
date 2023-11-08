@@ -37,8 +37,6 @@ if __name__ == "__main__":
             total_hits += len(coords)
 
         
-            
-        
     dset_hit_coords = f.create_dataset("coords",
                                     shape=(total_hits, 3),
                                     dtype=np.float32)
