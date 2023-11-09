@@ -58,6 +58,7 @@ if __name__ == "__main__":
 
     if "fit" in yaml_data["tasks"]:
         trainer.fit(model=model, datamodule=datamod)
+        
     if "test" in yaml_data["tasks"]:
         if "ckpt_path" in yaml_data.keys():
             model = NodeClassificationEngine.load_from_checkpoint(yaml_data["ckpt_path"])
