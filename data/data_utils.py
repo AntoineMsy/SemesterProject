@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from torch.nn.utils.rnn import pack_sequence
-
+import yaml
 def charge_transform(x, mean = 185, log_std = 4):
     return np.log(x/mean)/log_std
 
@@ -14,21 +14,27 @@ def scale_coords(x, max_mean = 540):
 def inv_scale_coords(y, max_mean = 540):
     return y*max_mean
 
+def parse_yaml(file_path):
+    with open(file_path, "r") as file:
+        try:
+            data = yaml.safe_load(file)
+            return data
+        except yaml.YAMLError as e:
+            print(f"Error parsing YAML file: {e}")
+            return None
+        
 def pad_elem(el, mask_l, max_l):
     mask_seq = torch.zeros(max_l)
     mask_seq[:mask_l] = 1
     return [torch.nn.functional.pad(el, (0,0,0, max_l - mask_l), value = 0)[None,:], mask_seq]
 
 def my_collate(batch_list):
-    # batch contains a list of tuples of structure (sequence, target)
     # coords, target, mask = batch["coords"], batch["values"], batch["mask"]
     coords = [item["coords"] for item in batch_list]
     target = [item["values"] for item in batch_list]
     mask_lengths = [len(item["coords"]) for item in batch_list]
     max_l = max(mask_lengths)
     mask = torch.zeros(len(batch_list), max_l)
-    # print(torch.vmap(pad_elem)(coords, mask_lengths, mask))
-    # print(torch.tensor(np.array(map(pad_elem, (coords, mask_lengths, mask)))))
     feats_out = torch.stack([torch.nn.functional.pad(coords[i], (0,0,0, max_l - mask_lengths[i]), value = 0) for i in range(len(coords))])
     vals_out = torch.stack([torch.nn.functional.pad(target[i], (0,0,0, max_l - mask_lengths[i]), value = 0) for i in range(len(coords))])
 
@@ -36,10 +42,6 @@ def my_collate(batch_list):
         mask[i,:mask_lengths[i]] = 1
         
     return {"coords": feats_out, "values": vals_out, "mask": mask }
-    # coords = pack_sequence(coords, enforce_sorted=False)
-    
-    # target = pack_sequence(target, enforce_sorted=False)
-    # return [coords, target]
 
 class LenMatchBatchSampler(torch.utils.data.BatchSampler):
     def __init__(self, data_source, sampler, batch_size, drop_last):

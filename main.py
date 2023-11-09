@@ -1,15 +1,13 @@
 import lightning.pytorch as pl
 from data.sfgd_datamodules import SFGD_tagging
+from data.data_utils import parse_yaml
 from models.engine_nodecl import NodeClassificationEngine
 from lightning.pytorch.accelerators import find_usable_cuda_devices
 import argparse
-import yaml
 from lightning.pytorch.loggers.tensorboard import TensorBoardLogger
-from lightning.pytorch.callbacks import Callback
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
-from lightning.pytorch.callbacks import DeviceStatsMonitor
+from lightning.pytorch.callbacks import DeviceStatsMonitor, LearningRateMonitor
 from lightning.pytorch.callbacks import ModelCheckpoint
-
 def get_args():
     parser = argparse.ArgumentParser(description="Parse YAML file with argparse")
     parser.add_argument("-f", "--file", required=True, help="Path to the YAML file")
@@ -19,15 +17,6 @@ def get_args():
     args = parser.parse_args()
     return args
 
-def parse_yaml(file_path):
-    with open(file_path, "r") as file:
-        try:
-            data = yaml.safe_load(file)
-            return data
-        except yaml.YAMLError as e:
-            print(f"Error parsing YAML file: {e}")
-            return None
-
 if __name__ == "__main__":
     config = get_args()
     yaml_data = parse_yaml(config.file)
@@ -35,19 +24,21 @@ if __name__ == "__main__":
 
     datamod = SFGD_tagging(data_dir= data_path, batch_size= yaml_data["batch_size"])
 
-    model = NodeClassificationEngine("transformer_encoder", model_kwargs= yaml_data["model_config"], lr = yaml_data["learning_rate"])
+    model = NodeClassificationEngine("transformer_encoder", **yaml_data['engine'])
     if config.name:
         run_name = config.name
         logger = TensorBoardLogger("tb_logs", name=run_name)
     else : 
         logger = TensorBoardLogger("tb_logs", name="my_model")
 
+    
     if "num_devices" in list(yaml_data.keys()):
         dev = find_usable_cuda_devices(yaml_data["num_devices"])
     else :
         dev = yaml_data['devices_names']
 
-    callbacks = [EarlyStopping(monitor = "validation_loss", log_rank_zero_only=True)]
+    callbacks = [EarlyStopping(monitor = "validation_loss", patience = 10, log_rank_zero_only=True),
+                 LearningRateMonitor(logging_interval="step")]
 
     trainer_args = {"accelerator" : "cuda", 
                     "devices": dev, 
@@ -64,8 +55,13 @@ if __name__ == "__main__":
     
     else :
         trainer = pl.Trainer(**trainer_args)
-    
-    trainer.fit(model=model, datamodule=datamod)
-    trainer.test(model=model, datamodule=datamod)
+
+    if "fit" in yaml_data["tasks"]:
+        trainer.fit(model=model, datamodule=datamod)
+    if "test" in yaml_data["tasks"]:
+        if "ckpt_path" in yaml_data.keys():
+            model = NodeClassificationEngine.load_from_checkpoint(yaml_data["ckpt_path"])
+
+        trainer.test(model=model, datamodule=datamod)
 
 

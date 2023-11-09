@@ -41,7 +41,7 @@ class NodeCL_h5dataset(Dataset):
     def __init__(self, data_dir):
         super(NodeCL_h5dataset, self).__init__()
         self.data_dir = data_dir
-      
+        
         self.h5_file = h5py.File(self.data_dir)
         self.len = len(self.h5_file["event_hits_index"])
         # self.transforms = transforms.Compose([transforms.ToTensor()])
@@ -60,12 +60,22 @@ class NodeCL_h5dataset(Dataset):
         coords = scale_coords(coords)
         vals = self.enc.transform(self.h5_file["labels"][h_start:h_stop])
         feats = np.concatenate([coords,charge], axis=1)
-        # p2d = (0,0,0,64 - n_hits%64)
-        # mask = torch.zeros(n_hits+ 64 - n_hits%64)
-        # mask[:n_hits] = 1
-        # t_coords, t_vals = torch.nn.functional.pad(torch.tensor(feats), p2d, value = 0), torch.nn.functional.pad(torch.tensor(vals), p2d, value = 0)
-        # return {"coords": t_coords, "values": t_vals, "mask": mask }
+       
+        t_coords, t_vals = torch.tensor(feats), torch.tensor(vals)
 
+        return {"coords": t_coords, "values": t_vals}
+    
+    def get_raw(self,x):
+        if x+1 == self.len:
+            h_start, h_stop = self.h5_file["event_hits_index"][x], len(self.h5_file["coords"])
+        else :
+            h_start, h_stop = self.h5_file["event_hits_index"][x], self.h5_file["event_hits_index"][x+1]
+        n_hits = h_stop - h_start
+        charge = self.h5_file["charge"][h_start:h_stop][:,None]
+        coords = self.h5_file["coords"][h_start:h_stop] -self.h5_file["verPos"][x]
+        
+        vals = self.h5_file["labels"][h_start:h_stop]
+        feats = np.concatenate([coords,charge], axis=1)
         t_coords, t_vals = torch.tensor(feats), torch.tensor(vals)
        
         return {"coords": t_coords, "values": t_vals}
