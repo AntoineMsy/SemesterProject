@@ -1,4 +1,5 @@
 tb_logs/
+*.ckpt
 *.out
 *.h5
 *.pyc

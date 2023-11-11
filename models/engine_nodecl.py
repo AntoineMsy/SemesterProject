@@ -33,7 +33,7 @@ class NodeClassificationEngine(pl.LightningModule):
         
         self.model = valid_models[self.model_name](**self.model_kwargs)
         if use_weighted_loss:
-            self.loss_fn = nn.CrossEntropyLoss(weight=torch.tensor([3,1,37]))
+            self.loss_fn = nn.CrossEntropyLoss(weight=torch.tensor([37,1,1.2]))
         else:
             self.loss_fn = nn.CrossEntropyLoss()
         
@@ -112,7 +112,7 @@ class NodeClassificationEngine(pl.LightningModule):
             return lr_scale
 
         scheduler = SequentialLR(optimizer,
-            [LinearLR(optimizer,0.001,1,total_iters=3000), ExponentialLR(optimizer,0.99999)], milestones=[3000]
+            [LinearLR(optimizer,0.001,1,total_iters=1000), ExponentialLR(optimizer,0.9998)], milestones=[1000]
         )
 
         return [optimizer], {"scheduler" : scheduler, "interval": "step"}

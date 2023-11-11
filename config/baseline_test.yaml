@@ -2,14 +2,14 @@ data_dir : /home/amisery/SemesterProject/out_cap_1000.h5
 
 # num_devices : 3
 devices_names : [1]
-batch_size : 512
-ckpt_path : "./tb_logs/my_model/version_9/checkpoints/epoch=47-step=10128.ckpt"
+batch_size : 256
+ckpt_path : "./epoch=14-step=3165.ckpt"
 tasks : ["test"]
 engine:
   model_kwargs:
-    d_model : 128
+    d_model : 256
     d_ff: 64
-    num_heads : 2
+    num_heads : 4
     num_layers : 6 
     in_features : 4 
     out_features : 3
