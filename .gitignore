@@ -6,3 +6,4 @@ tb_logs/
 __pycache__/
 notebooks/debug_ppl.ipynb
 *.png
+*.npy
