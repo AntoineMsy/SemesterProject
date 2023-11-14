@@ -2,6 +2,8 @@ import torch
 import numpy as np
 from torch.nn.utils.rnn import pack_sequence
 import yaml
+from scipy.spatial.transform import Rotation as R
+
 def charge_transform(x, mean = 185, log_std = 4):
     return np.log(x/mean)/log_std
 
@@ -22,7 +24,15 @@ def parse_yaml(file_path):
         except yaml.YAMLError as e:
             print(f"Error parsing YAML file: {e}")
             return None
-        
+
+class Small_random_rot(object):
+    def __init__(self):
+        self.p = np.pi
+    def __call__(self, x):
+        r_angles = [np.random.uniform(-self.p/4,self.p/4) for i in range(3)]
+        r_mat = torch.from_numpy(R.from_euler("XYZ", r_angles).as_matrix())
+        return torch.matmul(r_mat,x)
+    
 def pad_elem(el, mask_l, max_l):
     mask_seq = torch.zeros(max_l)
     mask_seq[:mask_l] = 1

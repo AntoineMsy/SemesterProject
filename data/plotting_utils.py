@@ -7,8 +7,8 @@ from sklearn.metrics import ConfusionMatrixDisplay
 
 #plot:
 # - binned  average efficiency over #hits and charge (one func)
-def plot_conf_mat(conf_mat_list, save_plot = True, save_dir = "conf_mat.png"):
-    conf_display = ConfusionMatrixDisplay(np.array(torch.mean(conf_mat_list, dim = 0)), display_labels=["multi_P", "single_P", "noise"])
+def plot_conf_mat(conf_mat, save_plot = True, save_dir = "conf_mat.png"):
+    conf_display = ConfusionMatrixDisplay(conf_mat.squeeze(0).numpy(), display_labels=["multi_P", "single_P", "noise"])
     conf_display.plot()
     if save_plot:
         plt.savefig(save_dir)
@@ -32,6 +32,28 @@ def plot_binned_efficiency(conf_mat_list, bin_val, val_name = r"$Charge [a.u.]$"
         plt.savefig(save_dir)
     plt.clf()
     # plt.hist(bin_val, weights = binning_weights)
+
+def plot_discriminators(softmax_list, true_classes, save_dir = "softmax.png"):
+    preds_sorted = [softmax_list[(true_classes.squeeze(1)==i).nonzero()[0],:] for i in [1,2,3]]
+    labels = ["Multi", "Single", "Noise"]
+    range = [(0,1),(0.05,0.95)]
+    r_l = [0,0,0,1,1,1]
+    c_l = [0,1,2,0,1,2]
+    fig , axs = plt.subplots(2,3,figsize = (20,10))    
+    for idx, ax in enumerate(fig.axes):
+        ax.hist(preds_sorted[c_l[idx]].transpose(0,1), color = ["gold", "firebrick", "royalblue"], histtype = "barstacked", bins = 50, range = range[r_l[idx]], label = labels)
+        if idx <3 :
+            ax.set_title("True %s"%labels[c_l[idx]], fontsize = 15)
+        ax.legend(fontsize = 15)
+        if idx >= 3:
+            ax.set_xlabel("Softmax value", fontsize = 14)
+        if idx%3 ==0:
+            ax.set_ylabel("Hit count",fontsize=14)
+        
+    plt.savefig(save_dir)
+
+
+    return preds_sorted
 
 # def display_3D(evt):
 #     fig = plt.figure(figsize=(10,10))

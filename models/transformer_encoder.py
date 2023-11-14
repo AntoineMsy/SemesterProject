@@ -64,6 +64,11 @@ class EncoderLayer(nn.Module):
         x_att = x + self.dropout(self.mha(x_n, x_n, x_n, mask, need_weights = False)[0])
         y = x_att + self.dropout(self.ffn(self.norm(x_att)))
         return y
+    
+    def get_weights(self,x,mask):
+        x_n = self.norm(x)
+        y = self.mha(x_n, x_n, x_n, mask)[1]
+        return y
 
 class TransformerSeg(nn.Module):
     def __init__(self, d_model, d_ff, num_heads, num_layers, in_features, out_features):

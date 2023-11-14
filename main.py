@@ -51,7 +51,7 @@ if __name__ == "__main__":
 
     if config.test_mode :
         print("RUNNING IN DEV MODE")
-        trainer = pl.Trainer(fast_dev_run= 10, **trainer_args)
+        trainer = pl.Trainer(fast_dev_run= 2, **trainer_args)
     
     else :
         trainer = pl.Trainer(**trainer_args)

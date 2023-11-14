@@ -4,7 +4,7 @@ import numpy as np
 import h5py
 from torch.utils.data import Dataset, RandomSampler, random_split, DataLoader
 import lightning.pytorch as pl
-from data.data_utils import LenMatchBatchSampler, charge_transform, scale_coords, my_collate
+from data.data_utils import LenMatchBatchSampler, charge_transform, scale_coords, my_collate, Small_random_rot
 from torchvision import transforms
 from sklearn.preprocessing import OneHotEncoder
 
@@ -44,7 +44,9 @@ class NodeCL_h5dataset(Dataset):
         
         self.h5_file = h5py.File(self.data_dir)
         self.len = len(self.h5_file["event_hits_index"])
-        # self.transforms = transforms.Compose([transforms.ToTensor()])
+
+        self.use_aug = False
+        self.data_aug = Small_random_rot()
         self.enc = OneHotEncoder(sparse_output=False)
         fit_array = np.array([[1],[2],[3]])
         self.enc.fit(fit_array)
@@ -57,10 +59,12 @@ class NodeCL_h5dataset(Dataset):
         n_hits = h_stop - h_start
         charge = charge_transform(self.h5_file["charge"][h_start:h_stop][:,None])
         coords = self.h5_file["coords"][h_start:h_stop] -self.h5_file["verPos"][x]
+        if self.use_aug:
+            coords = self.data_aug(coords)
         coords = scale_coords(coords)
         vals = self.enc.transform(self.h5_file["labels"][h_start:h_stop])
         feats = np.concatenate([coords,charge], axis=1)
-       
+        
         t_coords, t_vals = torch.tensor(feats), torch.tensor(vals)
 
         return {"coords": t_coords, "values": t_vals}
@@ -100,8 +104,9 @@ class SFGD_tagging(pl.LightningDataModule):
         else :
             self.dataset = NodeCL_dataset(self.data_dir)
 
-        self.train_dataset, self.val_dataset, self.test_dataset = random_split(self.dataset, lengths=[0.65,0.15,0.2])
-    
+        self.train_dataset, self.val_dataset, self.test_dataset = random_split(self.dataset, lengths=[0.85,0.05,0.1])
+        self.train_dataset.use_aug = True
+
     def train_dataloader(self):
         rand_sampler = RandomSampler(self.train_dataset)
         lenmatch_sampler = LenMatchBatchSampler(self.train_dataset, rand_sampler, batch_size= self.batch_size, drop_last=False)
@@ -113,9 +118,10 @@ class SFGD_tagging(pl.LightningDataModule):
         return DataLoader(self.val_dataset, batch_sampler=lenmatch_sampler, num_workers=self.num_workers, collate_fn=my_collate)
     
     def test_dataloader(self):
+        #Not using lenmatch sampler in test set
         rand_sampler = RandomSampler(self.test_dataset)
-        lenmatch_sampler = LenMatchBatchSampler(self.test_dataset, rand_sampler, batch_size= self.batch_size, drop_last=False)
-        return DataLoader(self.test_dataset, batch_sampler=lenmatch_sampler, num_workers=self.num_workers, collate_fn=my_collate)
+        # lenmatch_sampler = LenMatchBatchSampler(self.test_dataset, rand_sampler, batch_size= self.batch_size, drop_last=False)
+        return DataLoader(self.test_dataset, sampler=rand_sampler, batch_size = self.batch_size, drop_last= False, num_workers=self.num_workers, collate_fn=my_collate)
     
     def teardown(self, stage):
         ...

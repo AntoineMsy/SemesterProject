@@ -1,8 +1,8 @@
-data_dir : /home/amisery/SemesterProject/out_cap_1000.h5
+data_dir : /scratch/.amisery/out_cap_1000.h5
 
 # num_devices : 3
-devices_names : [4,5,6]
-batch_size : 32
+devices_names : [3,4,5,6]
+batch_size : 64
 tasks : ["fit","test"]
 
 engine:
@@ -19,7 +19,7 @@ engine:
 
 trainer_config:
   max_epochs : 100
-  accumulate_grad_batches : 10
+  accumulate_grad_batches : 5
   strategy : auto
   deterministic : False
   log_every_n_steps : 10
