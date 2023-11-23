@@ -2,7 +2,7 @@ data_dir : /scratch/.amisery/out_cap_1000.h5
 # num_devices : 3
 devices_names : [1]
 batch_size : 128
-ckpt_path : "./tb_logs/my_model/version_35/checkpoints/epoch=90-step=18655.ckpt"
+ckpt_path : "./tb_logs/my_model/version_/checkpoints/epoch=63-step=13120.ckpt"
 tasks : ["test"]
 engine:
   model_kwargs:
@@ -22,5 +22,5 @@ trainer_config:
   strategy : auto
   deterministic : False
   log_every_n_steps : 10
-  limit_test_batches : 0.5
+  limit_test_batches : 0.05
 

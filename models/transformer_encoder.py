@@ -57,6 +57,9 @@ class EncoderLayer(nn.Module):
         self.d_model = d_model
         self.ffn = PositionwiseFeedForward(d_model,d_ff)
         self.norm = LayerNorm(d_model)
+        # self.lin_q = nn.Linear(d_model,d_model)
+        # self.lin_k = nn.Linear(d_model,d_model)
+        # self.lin_v = nn.Linear(d_model,d_model)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self,x,mask):
