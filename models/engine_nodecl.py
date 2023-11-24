@@ -16,12 +16,12 @@ import numpy as np
 from sklearn.metrics import f1_score, auc, confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.ticker as ticker
 
-from models.transformer_encoder import TransformerSeg
+from models.transformer_encoder import *
 from data.data_utils import inv_charge_transform, inv_scale_coords, Masked_CE_Loss, FLoss
 from data.plotting_utils import *
 
 class NodeClassificationEngine(pl.LightningModule):
-    def __init__(self, model_name, model_kwargs, lr, use_weighted_loss = False):
+    def __init__(self, model_name, model_kwargs, lr=1.0e-3, weight = [1,1,1], use_weighted_loss = False):
         super(NodeClassificationEngine,self).__init__()
         self.save_hyperparameters()
         self.example_input_array = (torch.Tensor(32, 5, 4), torch.Tensor(32, 5))
@@ -29,11 +29,11 @@ class NodeClassificationEngine(pl.LightningModule):
         self.model_name = model_name
         self.lr = lr
 
-        valid_models = {"transformer_encoder" : TransformerSeg}
+        valid_models = {"baseline" : TransformerSeg, "v0": TransformerSeg_v0}
         
         self.model = valid_models[self.model_name](**self.model_kwargs)
         if use_weighted_loss:
-            self.loss_fn = FLoss(weight=torch.tensor([1 + np.log(37),1,1 + np.log(3)]))
+            self.loss_fn = FLoss(weight=torch.tensor(weight))
         else:
             self.loss_fn = FLoss()
         
@@ -68,10 +68,11 @@ class NodeClassificationEngine(pl.LightningModule):
             self.test_vals = torch.cat((self.test_vals, true_labels))
             self.test_nhits = torch.cat((self.test_nhits, torch.tensor([len(batch["values"][i,batch["mask"][i].bool()])])))
             self.test_softmax = torch.cat((self.test_softmax,torch.softmax(pred[i,batch["mask"][i].bool()],dim=-1).cpu().detach()))
-        
+            charge = inv_charge_transform(batch["coords"][i,:,3][batch["mask"][i].bool()].cpu().detach())
+            
+            self.test_charge = torch.cat((self.test_charge,torch.sum(charge,dim=0,keepdim=True)))
 
-        charge = inv_charge_transform(batch["coords"][:,:,3].cpu().detach())
-        self.test_charge = torch.cat((self.test_charge,torch.sum(charge, axis = 1)))
+        # self.test_charge = torch.cat((self.test_charge,torch.sum(charge, axis = 1)))
         self.log("test_loss", loss, on_epoch=True, rank_zero_only=True)
         return loss, pred, target
     

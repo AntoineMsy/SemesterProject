@@ -48,7 +48,6 @@ class FLoss(nn.Module):
     def forward(self, input, target,mask):
         ce_loss = self.ce(input,target,mask)
         pt = torch.exp(-ce_loss)
-        print((1-pt)**self.gamma)
         focal_loss = self.alpha * (1 - pt)**self.gamma * ce_loss
         return torch.mean(focal_loss)
     

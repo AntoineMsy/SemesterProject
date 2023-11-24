@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     datamod = SFGD_tagging(data_dir= data_path, batch_size= yaml_data["batch_size"])
 
-    model = NodeClassificationEngine("transformer_encoder", **yaml_data['engine'])
+    model = NodeClassificationEngine(**yaml_data['engine'])
     if config.name:
         run_name = config.name
         logger = TensorBoardLogger("tb_logs", name=run_name)
