@@ -7,13 +7,14 @@ import lightning.pytorch as pl
 import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import SequentialLR, LinearLR, ExponentialLR, CosineAnnealingWarmRestarts
-
+from models.lamb import Lamb
 # import matplotlib
 # matplotlib.use('Agg')
 
 from matplotlib import pyplot as plt
 import numpy as np
 from sklearn.metrics import f1_score, auc, confusion_matrix, ConfusionMatrixDisplay
+from sklearn.utils.class_weight import compute_class_weight
 import matplotlib.ticker as ticker
 
 from models.transformer_encoder import *
@@ -29,13 +30,14 @@ class NodeClassificationEngine(pl.LightningModule):
         self.model_name = model_name
         self.lr = lr
 
-        valid_models = {"baseline" : TransformerSeg, "v0": TransformerSeg_v0}
+        valid_models = {"transformer_encoder" : TransformerSeg, "baseline" : TransformerSeg, "v0": TransformerSeg_v0, "v1": TransformerSeg_v1}
         
         self.model = valid_models[self.model_name](**self.model_kwargs)
         if use_weighted_loss:
-            self.loss_fn = FLoss(weight=torch.tensor(weight))
+            # self.loss_fn = FLoss(weight=torch.tensor(weight), gamma = 1.2)
+            self.loss_fn = Masked_CE_Loss(weight=torch.tensor(weight))
         else:
-            self.loss_fn = FLoss()
+            self.loss_fn = Masked_CE_Loss()
         
         self.softmax = torch.nn.Softmax(dim=-1)
         
@@ -123,7 +125,10 @@ class NodeClassificationEngine(pl.LightningModule):
     def on_validation_epoch_end(self):
         conf_mat = torch.tensor(confusion_matrix(self.val_vals, self.val_preds, labels = [1,2,3], normalize="true"))
         conf_mat_T = torch.tensor(confusion_matrix(self.val_preds, self.val_vals, labels = [1,2,3], normalize="true"))
-        
+        self.log("Macro-F1", f1_score(self.val_vals, self.val_preds, average="macro"))
+        self.log("Micro-F1", f1_score(self.val_vals, self.val_preds, average="micro"))
+        # print(compute_class_weight("balanced", [1,2,3], self.val_vals))
+        # self.log("Weighted-F1", f1_score(self.val_vals, self.val_preds, sample_weight=compute_class_weight("balanced", classes=[1,2,3], y=self.val_vals), average="weighted"))
         self.log_dict({"MP-eff": conf_mat[0,0], "SP-eff" : conf_mat[1,1], "N-eff" : conf_mat[2,2]}, on_epoch = True, rank_zero_only=True )
         self.log_dict({"MP-pur": conf_mat_T[0,0], "SP-pur" : conf_mat_T[1][1], "N-pur" : conf_mat_T[2][2]}, on_epoch = True, rank_zero_only=True )
       
@@ -131,6 +136,8 @@ class NodeClassificationEngine(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr = self.lr)
+        # optimizer = Lamb(self.parameters(),lr = self.lr)
+        # optimizer = torch.optim.AdamW(self.parameters(), lr = self.lr)
         lr_warmup = LinearLR(optimizer, start_factor=0.001, end_factor=1, total_iters=600)
         def lr_foo(epoch):
             if epoch < self.hparams.warm_up_step:

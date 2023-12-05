@@ -1,0 +1,29 @@
+data_dir : /scratch/.amisery/out_cap_1000.h5
+
+# num_devices : 3
+devices_names : [2,3,5,6]
+batch_size : 16
+tasks : ["fit","test"]
+
+engine:
+  model_name : baseline
+  model_kwargs:
+    d_ff: 256
+    d_model: 512
+    in_features: 4
+    num_heads: 4
+    num_layers: 12
+    out_features: 3
+
+  lr : 1.0e-3
+  weight : [4,1,1.5]
+  use_weighted_loss : True
+
+trainer_config:
+  max_epochs : 50
+  accumulate_grad_batches : 20
+  strategy : auto
+  deterministic : False
+  log_every_n_steps : 10
+  
+

@@ -51,9 +51,9 @@ class MLP_Decoder(nn.Module):
         transpose = Transpose()
         bn = nn.BatchNorm1d(d_int)
         self.bn_t = nn.Sequential(transpose, bn, transpose)
-        self.dec = nn.Sequential(nn.Linear(d_enc,d_int), self.dropout, self.bn_t, nn.ReLU(),
-                                 nn.Linear(d_int,d_int), self.bn_t, nn.ReLU(),
-                                 nn.Linear(d_int,out_features))
+        self.dec = nn.Sequential(nn.Linear(d_enc,d_int, bias=False), self.dropout, self.bn_t, nn.ReLU(),
+                                 nn.Linear(d_int,d_int, bias=False), self.bn_t, nn.ReLU(),
+                                 nn.Linear(d_int,out_features, bias=False))
         
     def forward(self,x):
         return self.dec(x)
