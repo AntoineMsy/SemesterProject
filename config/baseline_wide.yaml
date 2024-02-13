@@ -1,7 +1,7 @@
 data_dir : /scratch/.amisery/out_cap_1000.h5
 
 # num_devices : 3
-devices_names : [2,3,5,6]
+devices_names : [2,4,5,6]
 batch_size : 16
 tasks : ["fit","test"]
 

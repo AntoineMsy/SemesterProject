@@ -5,9 +5,9 @@ from sklearn.metrics import ConfusionMatrixDisplay
 
 # import seaborn as sns
 
-#plot:
-# - binned  average efficiency over #hits and charge (one func)
+
 def plot_conf_mat(conf_mat, save_plot = True, save_dir = "conf_mat.png", mode = "eff"):
+    # Uses built-in scikit-learn confusion matrix display
     if mode == "pur":
         conf_display = ConfusionMatrixDisplay(conf_mat.squeeze(0).numpy().transpose(0,1), display_labels=["multi_P", "single_P", "noise"])
     else:
@@ -18,8 +18,8 @@ def plot_conf_mat(conf_mat, save_plot = True, save_dir = "conf_mat.png", mode = 
     plt.clf()
 
 def plot_binned_efficiency(conf_mat_list, bin_val, val_name = r"$Charge [a.u.]$", bin_num = 5, save_plot = True, save_dir = "binned_efficiency_plot.png"):
-    #takes a lists of 3x3 confusion matrix and plot its values (here efficiency) 
-    # in a binned way over a binning value (n_hits, charge...)
+    # Takes a lists of 3x3 confusion matrix and plot its values (here efficiency) 
+    # in a binned way over a binning value (number of hits, charge...)
     fig, ax = plt.subplots()
     binning_weights = np.array([[conf_mat_list[k][i][i] for k in range(len(bin_val))] for i in range(3)])
     binning = np.linspace(0, max(bin_val), bin_num)
@@ -39,9 +39,9 @@ def plot_binned_efficiency(conf_mat_list, bin_val, val_name = r"$Charge [a.u.]$"
     if save_plot:
         plt.savefig(save_dir)
     plt.clf()
-    # plt.hist(bin_val, weights = binning_weights)
 
 def plot_discriminators(softmax_list, true_classes, save_dir = "softmax.png"):
+    # Plots softmax values from the model
     preds_sorted = [softmax_list[(true_classes.squeeze(1)==i).nonzero().view(-1),:] for i in [1,2,3]]
     labels = ["Multi", "Single", "Noise"]
     range = [(0,1),(0.05,0.95)]

@@ -1,14 +1,14 @@
 data_dir : /scratch/.amisery/out_cap_1000.h5
 
 # num_devices : 3
-devices_names : [3,4,5,6]
-batch_size : 64
+devices_names : [2,4,5,6]
+batch_size : 32
 tasks : ["fit","test"]
 
 engine:
   model_name : "v0"
   model_kwargs:
-    d_ff: 128
+    d_ff: 64
     d_model: 128
     in_features: 4
     num_heads: 2
@@ -26,5 +26,6 @@ trainer_config:
   strategy : auto
   deterministic : False
   log_every_n_steps : 10
+  
   
 

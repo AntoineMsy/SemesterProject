@@ -5,6 +5,12 @@ import sys
 import tqdm
 import argparse
 
+"""
+Converts a folder of npz files into a single h5 file for faster data reading and easier manipulation
+Use in the command line via the argparser below
+You can filter the dataset based on number of hits
+"""
+
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--input_folder", help="Path to the input folder", default="/scratch2/sfgd/sparse_data_genie_fhc_numu_hittag/")
@@ -36,7 +42,10 @@ if __name__ == "__main__":
             total_rows += 1
             total_hits += len(coords)
 
-        
+    """
+    Initiate the h5py dataset
+    """
+
     dset_hit_coords = f.create_dataset("coords",
                                     shape=(total_hits, 3),
                                     dtype=np.float32)

@@ -26,7 +26,21 @@ class TransformerEncoder(nn.Module):
             x = layer(x, mask)
             out_l.append(x)
         return self.norm(torch.cat(out_l,dim=-1))
+    
+class TransformerSeg_pre(nn.Module):
+    def __init__(self, d_model, d_ff, num_heads, num_layers, in_features, out_features):
+        super(TransformerSeg_pre,self).__init__()
+        enc_layer = SALayer(d_model,d_ff,num_heads, dropout = 0.01)
+        self.encoder = TransformerEncoder(enc_layer,num_layers, d_model)
+        self.lin_emb = nn.Linear(in_features,d_model)
+        self.out_lin = nn.Linear(d_model,out_features)
 
+    def forward(self,x, mask):
+        x_model = torch.stack([self.lin_emb(x[:,i,:]) for i in range(x.shape[1])], dim=1)
+        x_model_out = self.encoder(x_model, mask)
+        y_pred = torch.stack([self.out_lin(x_model_out[:,i,:]) for i in range(x_model_out.shape[1])], dim=1)
+        return y_pred
+    
 class TransformerSeg(nn.Module):
     def __init__(self, d_model, d_ff, num_heads, num_layers, in_features, out_features):
         super(TransformerSeg,self).__init__()
